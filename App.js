@@ -38,7 +38,7 @@ export default function App() {
         if(mapView.current){
           mapView.current.animateToRegion(newRegion)
         }
-      })
+      }) 
     }
     startListening()
     return () =>{

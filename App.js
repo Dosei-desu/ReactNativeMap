@@ -107,7 +107,7 @@ export default function App() {
               id={marker.id}
               key={marker.id}
               coordinate={marker.coordinate}
-              title={marker.title}
+              title={marker.title} //this is bugged for some reason, always shows "undefined"
               onPress={() => onMarkerPressed(marker.text,marker.coordinate)}
             />
           ))

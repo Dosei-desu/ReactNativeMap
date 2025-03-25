@@ -1,29 +1,52 @@
 import { StatusBar } from 'expo-status-bar';
+import { collection, addDoc, getFirestore } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
 import { StyleSheet, Text, View } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
+import { useCollection } from 'react-firebase-hooks/firestore';
 import MapView, {Marker} from 'react-native-maps';
 import * as Location from 'expo-location';
 
 export default function App() {
-  const [markers, setMarkers] = useState([])
+  //database-------------------
+    //had to add database here, since keeping it in separate file didn't work for some reason
+  const firebaseConfig = {
+    apiKey: "AIzaSyBdxBEQADYvANV7V2mJBjO3cZU-EMhg_Gk",
+    authDomain: "reactnativemapproject-29fac.firebaseapp.com",
+    projectId: "reactnativemapproject-29fac",
+    storageBucket: "reactnativemapproject-29fac.firebasestorage.app",
+    messagingSenderId: "411557810879",
+    appId: "1:411557810879:web:d085fe912d0c23a4b32c0a"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const database = getFirestore(app);
+  //----------------------------
+  
+  const [markerTitle, setTitle] = useState('');
+  //const [markers, setMarkers] = useState([]);
+  const [values, loading, error] = useCollection(collection(database, "markers"));
+  const markers = values?.docs.map((doc) => ({...doc.data(), id: doc.id}));
 
   const [region, setRegion] = useState({
     latitude: 55.66497,
     longitude: 12.44021,
     latitudeDelta: 0.75,
     longitudeDelta: 0.75
-  })
+  });
 
-  const mapView = useRef(null)
-  const locationSubscription = useRef(null)
+  const mapView = useRef(null);
+  const locationSubscription = useRef(null);
 
   useEffect(() =>{
     async function startListening(){
-      let { status } = await Location.requestForegroundPermissionsAsync()
+      let { status } = await Location.requestForegroundPermissionsAsync();
+
       if(status !== 'granted'){
         alert("Access denied!")
         return
       }
+
       locationSubscription.current = await Location.watchPositionAsync({
         distanceInterval: 100,
         accuracy: Location.Accuracy.High
@@ -34,35 +57,42 @@ export default function App() {
           latitudeDelta: 0.75,
           longitudeDelta: 0.75
         }
-        setRegion(newRegion)
+        setRegion(newRegion);
         if(mapView.current){
           mapView.current.animateToRegion(newRegion)
         }
-      }) 
+      }); 
     }
-    startListening()
+
+    startListening();
+
     return () =>{
       if(locationSubscription.current){
-        locationSubscription.current.remove()
+        locationSubscription.current.remove();
       }
     }
-  }, [])
+  }, []);
 
-  function addMarker(data){
-    const {latitude, longitude} = data.nativeEvent.coordinate
+  async function addMarker(data){
+    const {coordinate} = data.nativeEvent;
     const newMarker = {
-      coordinate: {latitude, longitude},
-      key: data.timeStamp,
+      coordinate,
       title: "Marker"
+    };
+    try{
+      await addDoc(collection(database, "markers"), newMarker);
     }
-    setMarkers([...markers, newMarker])
+    catch(error){
+      console.log("Database error: "+error)
+    }    
   }
 
   function onMarkerPressed(text,coordinate){
     alert(text+" pressed!"+
-      "\nLatitude:"+coordinate.latitude+
-      "\nLongitude"+coordinate.longitude
-    )
+      "\nLatitude: "+coordinate.latitude+
+      "\nLongitude: "+coordinate.longitude
+    );
+    
   }
 
   return (
@@ -72,12 +102,13 @@ export default function App() {
         region={region}
         onLongPress={addMarker}
         >
-          {markers.map(marker =>(
+          {markers?.map(marker =>(
             <Marker
+              id={marker.id}
+              key={marker.id}
               coordinate={marker.coordinate}
-              key={marker.key}
               title={marker.title}
-              onPress={() => onMarkerPressed(marker.title,marker.coordinate)}
+              onPress={() => onMarkerPressed(marker.text,marker.coordinate)}
             />
           ))
 
